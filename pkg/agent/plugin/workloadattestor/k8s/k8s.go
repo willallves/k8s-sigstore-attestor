@@ -740,7 +740,10 @@ func getselectorOfSignedImage(imageName string) (string, error) {
 	}
 
 	// verify which subject
-	selector := getSubjectImage(verified)
+	selector, err := getSubjectImage(verified)
+	if err != nil {
+		return "", err
+	}
 	if selector == "" {
 		log.Println("Selector returned empty")
 	}
@@ -775,15 +778,15 @@ func getOnlySubject(selectors string) string {
 	return subject
 }
 
-func getSubjectImage(verified []cosign.SignedPayload) string {
+func getSubjectImage(verified []cosign.SignedPayload) (string, error) {
 	var outputKeys []payload.SimpleContainerImage
 	for _, vp := range verified {
 		ss := payload.SimpleContainerImage{}
 
 		err := json.Unmarshal(vp.Payload, &ss)
 		if err != nil {
-			fmt.Println("error decoding the payload:", err.Error())
-			return ""
+			errorMessage := fmt.Sprint("error decoding the payload:", err.Error())
+			return "", errors.New(errorMessage)
 		}
 
 		if vp.Cert != nil {
@@ -798,12 +801,12 @@ func getSubjectImage(verified []cosign.SignedPayload) string {
 	b, err := json.Marshal(outputKeys)
 	if err != nil {
 		log.Println("Error generating the output:", err.Error())
-		return ""
+		return "", err
 	}
 
 	subject := getOnlySubject(string(b))
 
-	return subject
+	return subject, nil
 }
 
 func certSubject(c *x509.Certificate) string {
